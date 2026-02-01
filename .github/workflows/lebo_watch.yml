@@ -1,0 +1,71 @@
+name: Lebo Watch — Weekly Digest
+
+on:
+  schedule:
+    # Wednesdays at 9am EST (14:00 UTC)
+    - cron: "0 14 * * 3"
+  workflow_dispatch: # Allow manual runs
+
+jobs:
+  lebo-watch:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Deno (required by yt-dlp)
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      - name: Install Playwright browsers
+        run: playwright install chromium --with-deps
+
+      - name: Run data ingestion
+        run: python ingest_data.py
+
+      - name: Run analysis
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: python analyze_meeting.py
+
+      - name: Publish to Ghost
+        env:
+          GHOST_API_URL: ${{ secrets.GHOST_API_URL }}
+          GHOST_ADMIN_KEY: ${{ secrets.GHOST_ADMIN_KEY }}
+        run: python publish_to_ghost.py
+
+      - name: Upload transcripts as artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: transcripts-${{ github.run_id }}
+          path: data/transcripts/
+          retention-days: 30
+
+      - name: Upload agendas and minutes as artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: agendas-minutes-${{ github.run_id }}
+          path: |
+            data/agendas/
+            data/minutes/
+          retention-days: 30
+
+      - name: Upload drafts as artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: drafts-${{ github.run_id }}
+          path: data/drafts/
+          retention-days: 30

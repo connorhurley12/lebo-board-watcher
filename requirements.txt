@@ -1,0 +1,12 @@
+yt-dlp
+youtube-transcript-api
+playwright
+openai
+anthropic
+PyJWT
+markdown
+requests
+beautifulsoup4
+pdfminer.six
+python-dotenv
+pytest

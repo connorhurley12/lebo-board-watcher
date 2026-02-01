@@ -1,0 +1,13 @@
+# MT. LEBANON CONTEXT
+- **Location:** Mt. Lebanon, PA (Suburb of Pittsburgh).
+- **Government Style:** "Home Rule Municipality" with a Commission-Manager form of government.
+- **School District:** Mt. Lebanon School District (MTLSD) is a separate legal entity from the Municipality.
+- **Key Geography:** Washington Road (Uptown), Beverly Road, The Galleria, Bird Park, Mt. Lebanon Park.
+- **School Buildings:** - High School (Recently renovated, massive project).
+  - Middle Schools: Mellon, Jefferson.
+  - Elementary: Foster, Hoover, Howe, Lincoln, Markham, Washington, Williamsburg.
+- **Hot Topics for Parents:** - Pedestrian safety/sidewalks (It is a walking community).
+  - Artificial turf vs. grass fields.
+  - Property taxes (Millage rates) & Assessments.
+  - Deer management (Culling programs).
+  - Diversity, Equity, and Inclusion (DEI) curriculum debates.
