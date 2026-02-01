@@ -29,6 +29,7 @@ PROJECT_ROOT = Path(__file__).parent
 CONTEXT_FILE = PROJECT_ROOT / "project_context.md"
 TRANSCRIPTS_DIR = PROJECT_ROOT / "data" / "transcripts"
 AGENDAS_DIR = PROJECT_ROOT / "data" / "agendas"
+MINUTES_DIR = PROJECT_ROOT / "data" / "minutes"
 DRAFTS_DIR = PROJECT_ROOT / "data" / "drafts"
 
 # ---------------------------------------------------------------------------
@@ -188,8 +189,8 @@ def analyze_with_anthropic(system_prompt: str, user_prompt: str, model: str = "c
 # Pipeline
 # ---------------------------------------------------------------------------
 
-def build_extract_prompt(transcript: dict, agendas: list[dict]) -> str:
-    """Build a Phase 1 extraction prompt for a single transcript."""
+def build_extract_prompt(transcript: dict, agendas: list[dict], minutes: list[dict] | None = None) -> str:
+    """Build a Phase 1 extraction prompt for a single transcript or minutes document."""
     parts: list[str] = []
 
     if agendas:
@@ -202,12 +203,48 @@ def build_extract_prompt(transcript: dict, agendas: list[dict]) -> str:
             parts.append(content)
             parts.append("\n\n")
 
+    if minutes:
+        parts.append("## Relevant Minutes\n")
+        for m in minutes:
+            parts.append(f"### {m['filename']}\n")
+            content = m["content"]
+            if len(content) > 15_000:
+                content = content[:15_000] + "\n\n[Minutes truncated]"
+            parts.append(content)
+            parts.append("\n\n")
+
     parts.append("## Meeting Transcript\n")
     parts.append(f"### {transcript['filename']}\n")
     content = transcript["content"]
     # Cap at ~60k chars (~15k tokens) to stay within context limits
     if len(content) > 60_000:
         content = content[:60_000] + "\n\n[Transcript truncated for length]"
+    parts.append(content)
+    parts.append("\n\n")
+
+    parts.append(EXTRACT_PROMPT)
+    return "".join(parts)
+
+
+def build_minutes_extract_prompt(minutes_doc: dict, agendas: list[dict]) -> str:
+    """Build a Phase 1 extraction prompt for meeting minutes (no transcript available)."""
+    parts: list[str] = []
+
+    if agendas:
+        parts.append("## Relevant Agendas\n")
+        for a in agendas:
+            parts.append(f"### {a['filename']}\n")
+            content = a["content"]
+            if len(content) > 15_000:
+                content = content[:15_000] + "\n\n[Agenda truncated]"
+            parts.append(content)
+            parts.append("\n\n")
+
+    parts.append("## Meeting Minutes\n")
+    parts.append(f"### {minutes_doc['filename']}\n")
+    content = minutes_doc["content"]
+    if len(content) > 60_000:
+        content = content[:60_000] + "\n\n[Minutes truncated for length]"
     parts.append(content)
     parts.append("\n\n")
 
@@ -287,12 +324,16 @@ def main():
         transcripts = load_text_files(TRANSCRIPTS_DIR)
 
     agendas = load_text_files(AGENDAS_DIR)
+    minutes = load_text_files(MINUTES_DIR)
 
-    if not transcripts:
-        log.error("No transcripts found. Run ingest_data.py first.")
+    if not transcripts and not minutes:
+        log.error("No transcripts or minutes found. Run ingest_data.py first.")
         raise SystemExit(1)
 
-    log.info("Loaded %d transcript(s) and %d agenda(s)", len(transcripts), len(agendas))
+    log.info(
+        "Loaded %d transcript(s), %d agenda(s), %d minutes file(s)",
+        len(transcripts), len(agendas), len(minutes),
+    )
     system_prompt = load_context()
 
     # -----------------------------------------------------------------------
@@ -300,14 +341,15 @@ def main():
     # This keeps each LLM call within token limits.
     # -----------------------------------------------------------------------
     meeting_extracts: list[dict] = []
+    call_count = 0
 
-    for i, transcript in enumerate(transcripts):
-        if i > 0:
+    for transcript in transcripts:
+        if call_count > 0:
             log.info("Waiting 90s for rate limit cooldown…")
             time.sleep(90)
 
         log.info("Phase 1 — Extracting: %s", transcript["filename"])
-        user_prompt = build_extract_prompt(transcript, agendas)
+        user_prompt = build_extract_prompt(transcript, agendas, minutes)
         log.info("Sending to %s (%s)…", args.provider, model)
 
         try:
@@ -320,7 +362,45 @@ def main():
             "source": transcript["filename"],
             "notes": notes,
         })
+        call_count += 1
         log.info("Extracted notes from %s (%d chars)", transcript["filename"], len(notes))
+
+    # -----------------------------------------------------------------------
+    # Phase 1b: Process minutes as standalone sources for meetings
+    # that have no corresponding transcript (e.g., Hospital Authority).
+    # -----------------------------------------------------------------------
+    transcript_names = {t["filename"].lower() for t in transcripts}
+    for minutes_doc in minutes:
+        # Skip minutes if we already have a transcript from the same board/date.
+        # Filenames look like: 2026-01-27_mtleb_minutes_CM.txt vs
+        #                      2026-01-27_Municipality_Commission_Meeting.txt
+        # We do a simple date-prefix check to avoid double-processing.
+        date_prefix = minutes_doc["filename"][:10]  # "YYYY-MM-DD"
+        already_covered = any(t.startswith(date_prefix) for t in transcript_names)
+        if already_covered:
+            log.info("Skipping minutes %s — transcript exists for same date", minutes_doc["filename"])
+            continue
+
+        if call_count > 0:
+            log.info("Waiting 90s for rate limit cooldown…")
+            time.sleep(90)
+
+        log.info("Phase 1b — Extracting from minutes: %s", minutes_doc["filename"])
+        user_prompt = build_minutes_extract_prompt(minutes_doc, agendas)
+        log.info("Sending to %s (%s)…", args.provider, model)
+
+        try:
+            notes = _call_llm(args.provider, model, system_prompt, user_prompt)
+        except Exception as exc:
+            log.error("Extraction failed for %s: %s", minutes_doc["filename"], exc)
+            continue
+
+        meeting_extracts.append({
+            "source": minutes_doc["filename"],
+            "notes": notes,
+        })
+        call_count += 1
+        log.info("Extracted notes from minutes %s (%d chars)", minutes_doc["filename"], len(notes))
 
     if not meeting_extracts:
         log.error("No meeting extracts produced. Cannot generate newsletter.")

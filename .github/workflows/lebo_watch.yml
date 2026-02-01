@@ -2,8 +2,8 @@ name: Lebo Watch — Weekly Digest
 
 on:
   schedule:
-    # Wednesdays at 9am EST (14:00 UTC)
-    - cron: "0 14 * * 3"
+    # Fridays at 9am EST (14:00 UTC)
+    - cron: "0 14 * * 5"
   workflow_dispatch: # Allow manual runs
 
 jobs:

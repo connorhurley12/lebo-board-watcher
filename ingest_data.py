@@ -33,6 +33,11 @@ YOUTUBE_SOURCES = [
         "type": "playlist",
         "url": "https://www.youtube.com/playlist?list=PL2Lgvh7YyccoRq1ET1MVKEEXl6WgCm0y0",
     },
+    {
+        "name": "SchoolBoardPresentations",
+        "type": "playlist",
+        "url": "https://www.youtube.com/playlist?list=PL2Lgvh7YyccqB9XQ_sTpD8dThPnG_GogB",
+    },
 ]
 
 BOARDDOCS_URL = "https://go.boarddocs.com/pa/mtlebanon/Board.nsf/Public"
@@ -298,12 +303,13 @@ def scrape_boarddocs(url: str):
 # Mt. Lebanon Website Scraper (agendas & minutes PDFs)
 # ---------------------------------------------------------------------------
 
-def scrape_mtleb_agendas(url: str):
+def scrape_mtleb_agendas(url: str, lookback_days: int = 30):
     """
     Scrape the Mt. Lebanon agendas-minutes page for PDF links.
 
     The page is static HTML with PDF links organized by board/commission.
     Downloads agenda and minutes PDFs and saves their text content.
+    Only downloads documents dated within *lookback_days* of today.
     """
     import requests as req
     from bs4 import BeautifulSoup
@@ -342,6 +348,7 @@ def scrape_mtleb_agendas(url: str):
         return
 
     log.info("Found %d PDF links on mtlebanon.org", len(pdf_links))
+    cutoff = datetime.now() - timedelta(days=lookback_days)
 
     for pdf in pdf_links:
         pdf_url = pdf["url"]
@@ -367,6 +374,7 @@ def scrape_mtleb_agendas(url: str):
             out_dir = AGENDAS_DIR
 
         # Parse date from digits (MMDDYYYY or MMDDYY)
+        date_obj = None
         if len(date_digits) == 8:
             try:
                 date_obj = datetime.strptime(date_digits, "%m%d%Y")
@@ -381,6 +389,11 @@ def scrape_mtleb_agendas(url: str):
                 date_str = datetime.now().strftime("%Y-%m-%d")
         else:
             date_str = datetime.now().strftime("%Y-%m-%d")
+
+        # Skip documents older than the lookback window
+        if date_obj and date_obj < cutoff:
+            log.debug("Skipping old document: %s (%s)", pdf_stem, date_str)
+            continue
 
         # Download the PDF and extract text
         try:
@@ -462,7 +475,7 @@ def main():
         scrape_boarddocs(BOARDDOCS_URL)
 
         log.info("=== Mt. Lebanon Website Ingestion ===")
-        scrape_mtleb_agendas(MTLEB_AGENDAS_URL)
+        scrape_mtleb_agendas(MTLEB_AGENDAS_URL, lookback_days=args.lookback_days)
 
     log.info("Ingestion complete.")
 

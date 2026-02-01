@@ -28,6 +28,13 @@ PROJECT_ROOT = Path(__file__).parent
 DRAFTS_DIR = PROJECT_ROOT / "data" / "drafts"
 LOGO_PATH = PROJECT_ROOT / "assets" / "logo.png"
 
+INTRO_HEADER = (
+    "<p><strong>Lebo Board Watch</strong> is an AI-generated weekly digest of Mt. Lebanon local government "
+    "meetings — school board, municipal commission, and more — so busy residents can stay informed without "
+    "sitting through hours of public meetings. New editions drop every Friday morning.</p>\n\n"
+    "---\n\n"
+)
+
 MONETIZATION_FOOTER = (
     "\n\n---\n\n"
     "<p>Keep Lebo Watch running: "
@@ -104,8 +111,9 @@ def create_draft(markdown_content: str, ghost_url: str, admin_key: str, feature_
     """
     token = _make_ghost_token(admin_key)
 
-    # Convert Markdown → HTML and append the monetization footer
-    html_body = markdown.markdown(markdown_content, extensions=["extra", "smarty"])
+    # Convert Markdown → HTML, prepend intro blurb, append footer
+    html_body = INTRO_HEADER
+    html_body += markdown.markdown(markdown_content, extensions=["extra", "smarty"])
     html_body += MONETIZATION_FOOTER
 
     # Ghost expects content wrapped in a mobiledoc JSON structure
