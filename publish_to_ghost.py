@@ -86,13 +86,8 @@ def create_draft(markdown_content: str, ghost_url: str, admin_key: str) -> dict:
         }
     )
 
-    # Extract a title from the first markdown heading, if present
-    title = "Board Watch Update"
-    for line in markdown_content.splitlines():
-        stripped = line.strip()
-        if stripped.startswith("# "):
-            title = stripped.lstrip("# ").strip()
-            break
+    # Generate a weekly digest title with the current date
+    title = f"Lebo Board Watch — Week of {datetime.now().strftime('%B %d, %Y')}"
 
     post_data = {
         "posts": [
