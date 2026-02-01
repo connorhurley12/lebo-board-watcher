@@ -30,6 +30,7 @@ CONTEXT_FILE = PROJECT_ROOT / "project_context.md"
 TRANSCRIPTS_DIR = PROJECT_ROOT / "data" / "transcripts"
 AGENDAS_DIR = PROJECT_ROOT / "data" / "agendas"
 MINUTES_DIR = PROJECT_ROOT / "data" / "minutes"
+BUDGET_DIR = PROJECT_ROOT / "data" / "budget"
 DRAFTS_DIR = PROJECT_ROOT / "data" / "drafts"
 
 # ---------------------------------------------------------------------------
@@ -252,9 +253,21 @@ def build_minutes_extract_prompt(minutes_doc: dict, agendas: list[dict]) -> str:
     return "".join(parts)
 
 
-def build_newsletter_prompt(meeting_extracts: list[dict]) -> str:
+def build_newsletter_prompt(meeting_extracts: list[dict], budget_docs: list[dict] | None = None) -> str:
     """Build a Phase 2 prompt combining all per-meeting extracts into one newsletter."""
     parts: list[str] = []
+
+    if budget_docs:
+        parts.append("## Municipal Budget Context\n")
+        parts.append("(Use this as background when discussing spending, contracts, or financial items.)\n\n")
+        for doc in budget_docs:
+            parts.append(f"### {doc['filename']}\n")
+            content = doc["content"]
+            if len(content) > 10_000:
+                content = content[:10_000] + "\n\n[Budget document truncated]"
+            parts.append(content)
+            parts.append("\n\n")
+        parts.append("---\n\n")
 
     parts.append("## This Week's Meeting Notes\n\n")
     for extract in meeting_extracts:
@@ -325,14 +338,15 @@ def main():
 
     agendas = load_text_files(AGENDAS_DIR)
     minutes = load_text_files(MINUTES_DIR)
+    budget_docs = load_text_files(BUDGET_DIR)
 
     if not transcripts and not minutes:
         log.error("No transcripts or minutes found. Run ingest_data.py first.")
         raise SystemExit(1)
 
     log.info(
-        "Loaded %d transcript(s), %d agenda(s), %d minutes file(s)",
-        len(transcripts), len(agendas), len(minutes),
+        "Loaded %d transcript(s), %d agenda(s), %d minutes file(s), %d budget doc(s)",
+        len(transcripts), len(agendas), len(minutes), len(budget_docs),
     )
     system_prompt = load_context()
 
@@ -414,7 +428,7 @@ def main():
         time.sleep(90)
 
     log.info("Phase 2 — Generating consolidated newsletter from %d meetings…", len(meeting_extracts))
-    newsletter_prompt = build_newsletter_prompt(meeting_extracts)
+    newsletter_prompt = build_newsletter_prompt(meeting_extracts, budget_docs=budget_docs)
     log.info("Sending to %s (%s)…", args.provider, model)
 
     try:

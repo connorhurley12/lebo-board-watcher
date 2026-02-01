@@ -62,6 +62,14 @@ jobs:
             data/minutes/
           retention-days: 30
 
+      - name: Upload budget data as artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: budget-${{ github.run_id }}
+          path: data/budget/
+          retention-days: 30
+
       - name: Upload drafts as artifacts
         if: always()
         uses: actions/upload-artifact@v4

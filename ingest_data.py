@@ -42,11 +42,13 @@ YOUTUBE_SOURCES = [
 
 BOARDDOCS_URL = "https://go.boarddocs.com/pa/mtlebanon/Board.nsf/Public"
 MTLEB_AGENDAS_URL = "https://mtlebanon.org/about/agendas-minutes/"
+MTLEB_FINANCE_URL = "https://mtlebanon.org/departments/finance/"
 
 DATA_DIR = Path("data")
 TRANSCRIPTS_DIR = DATA_DIR / "transcripts"
 AGENDAS_DIR = DATA_DIR / "agendas"
 MINUTES_DIR = DATA_DIR / "minutes"
+BUDGET_DIR = DATA_DIR / "budget"
 
 logging.basicConfig(
     level=logging.INFO,
@@ -71,6 +73,7 @@ def ensure_dirs():
     TRANSCRIPTS_DIR.mkdir(parents=True, exist_ok=True)
     AGENDAS_DIR.mkdir(parents=True, exist_ok=True)
     MINUTES_DIR.mkdir(parents=True, exist_ok=True)
+    BUDGET_DIR.mkdir(parents=True, exist_ok=True)
 
 
 # ---------------------------------------------------------------------------
@@ -423,6 +426,153 @@ def scrape_mtleb_agendas(url: str, lookback_days: int = 30):
         log.info("Saved %s: %s", doc_type, filename)
 
 
+# ---------------------------------------------------------------------------
+# Finance / Budget Scraper
+# ---------------------------------------------------------------------------
+
+def scrape_finance_budget(finance_url: str):
+    """
+    Scrape the Mt. Lebanon finance page for budget subpages and PDFs.
+
+    Discovers budget year pages (e.g., /finance/2026-budget/) and downloads
+    both the page text (budget summaries, tables) and any linked PDFs.
+    """
+    import requests as req
+    from bs4 import BeautifulSoup
+
+    headers = {
+        "User-Agent": (
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        ),
+    }
+
+    try:
+        resp = req.get(finance_url, headers=headers, timeout=30)
+        resp.raise_for_status()
+    except Exception as exc:
+        log.error("Failed to fetch %s: %s", finance_url, exc)
+        return
+
+    soup = BeautifulSoup(resp.text, "html.parser")
+
+    # Find budget year pages (e.g., /finance/2026-budget/, /finance/2026-managers-recommended-budget/)
+    budget_links = []
+    for a_tag in soup.find_all("a", href=True):
+        href = a_tag["href"]
+        if re.search(r"/finance/\d{4}-.*budget", href, re.IGNORECASE):
+            if href.startswith("/"):
+                href = "https://mtlebanon.org" + href
+            elif not href.startswith("http"):
+                href = "https://mtlebanon.org/" + href
+            link_text = a_tag.get_text(strip=True)
+            budget_links.append({"url": href, "text": link_text})
+
+    # Deduplicate by URL
+    seen_urls = set()
+    unique_links = []
+    for link in budget_links:
+        if link["url"] not in seen_urls:
+            seen_urls.add(link["url"])
+            unique_links.append(link)
+    budget_links = unique_links
+
+    if not budget_links:
+        log.warning("No budget pages found on %s", finance_url)
+        return
+
+    log.info("Found %d budget page(s) on finance page", len(budget_links))
+
+    for link in budget_links:
+        _scrape_budget_page(link["url"], link["text"], headers)
+
+
+def _scrape_budget_page(page_url: str, page_title: str, headers: dict):
+    """Scrape a single budget page for its content and PDFs."""
+    import requests as req
+    from bs4 import BeautifulSoup
+
+    try:
+        resp = req.get(page_url, headers=headers, timeout=30)
+        resp.raise_for_status()
+    except Exception as exc:
+        log.warning("Could not fetch budget page %s: %s", page_url, exc)
+        return
+
+    soup = BeautifulSoup(resp.text, "html.parser")
+
+    # Extract the main content area text (budget tables, summaries)
+    content_area = soup.find("main") or soup.find("article") or soup.find("div", class_="entry-content")
+    if content_area:
+        page_text = content_area.get_text(separator="\n", strip=True)
+    else:
+        page_text = soup.get_text(separator="\n", strip=True)
+
+    # Extract year from URL (e.g., /2026-budget/ → 2026)
+    year_match = re.search(r"/(\d{4})-", page_url)
+    year_str = year_match.group(1) if year_match else datetime.now().strftime("%Y")
+
+    # Save the page text as a summary
+    safe_title = sanitize_filename(page_title or f"budget_{year_str}")
+    summary_filename = f"{year_str}_budget_summary_{safe_title}.txt"
+    summary_path = BUDGET_DIR / summary_filename
+
+    with open(summary_path, "w", encoding="utf-8") as f:
+        f.write(f"Source: mtlebanon.org\n")
+        f.write(f"Type: budget_summary\n")
+        f.write(f"Year: {year_str}\n")
+        f.write(f"Title: {page_title}\n")
+        f.write(f"URL: {page_url}\n\n")
+        f.write("=" * 80 + "\n\n")
+        f.write(page_text)
+
+    log.info("Saved budget summary: %s", summary_filename)
+
+    # Find and download PDFs linked from this budget page
+    for a_tag in soup.find_all("a", href=True):
+        href = a_tag["href"]
+        if not href.lower().endswith(".pdf"):
+            continue
+
+        if href.startswith("/"):
+            href = "https://mtlebanon.org" + href
+        elif not href.startswith("http"):
+            href = "https://mtlebanon.org/" + href
+
+        pdf_name = Path(href).stem
+        safe_pdf = sanitize_filename(pdf_name)
+        pdf_filename = f"{year_str}_budget_pdf_{safe_pdf}.txt"
+        pdf_path = BUDGET_DIR / pdf_filename
+
+        # Skip if we already have this file
+        if pdf_path.exists():
+            log.debug("Budget PDF already saved: %s", pdf_filename)
+            continue
+
+        try:
+            pdf_resp = req.get(href, headers=headers, timeout=30)
+            pdf_resp.raise_for_status()
+        except Exception as exc:
+            log.warning("Could not download budget PDF %s: %s", href, exc)
+            continue
+
+        pdf_text = _extract_pdf_text(pdf_resp.content)
+        if not pdf_text:
+            pdf_text = f"[PDF could not be parsed — view at {href}]"
+
+        link_text = a_tag.get_text(strip=True)
+        with open(pdf_path, "w", encoding="utf-8") as f:
+            f.write(f"Source: mtlebanon.org\n")
+            f.write(f"Type: budget_document\n")
+            f.write(f"Year: {year_str}\n")
+            f.write(f"Title: {link_text or pdf_name}\n")
+            f.write(f"PDF URL: {href}\n\n")
+            f.write("=" * 80 + "\n\n")
+            f.write(pdf_text)
+
+        log.info("Saved budget PDF: %s", pdf_filename)
+
+
 def _extract_pdf_text(pdf_bytes: bytes) -> str | None:
     """Try to extract text from PDF bytes. Returns None if extraction fails."""
     try:
@@ -476,6 +626,9 @@ def main():
 
         log.info("=== Mt. Lebanon Website Ingestion ===")
         scrape_mtleb_agendas(MTLEB_AGENDAS_URL, lookback_days=args.lookback_days)
+
+        log.info("=== Finance / Budget Ingestion ===")
+        scrape_finance_budget(MTLEB_FINANCE_URL)
 
     log.info("Ingestion complete.")
 
