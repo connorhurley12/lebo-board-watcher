@@ -5,7 +5,7 @@
 - **Key Geography:** Washington Road (Uptown), Beverly Road, The Galleria, Bird Park, Mt. Lebanon Park.
 - **School Buildings:** - High School (Recently renovated, massive project).
   - Middle Schools: Mellon, Jefferson.
-  - Elementary: Foster, Hoover, Howe, Lincoln, Markham, Washington, Williamsburg.
+  - Elementary: Foster, Hoover, Howe, Lincoln, Markham, Washington, Jefferson.
 - **Hot Topics for Parents:** - Pedestrian safety/sidewalks (It is a walking community).
   - Artificial turf vs. grass fields.
   - Property taxes (Millage rates) & Assessments.
