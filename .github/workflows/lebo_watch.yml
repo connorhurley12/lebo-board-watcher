@@ -31,18 +31,22 @@ jobs:
         run: playwright install chromium --with-deps
 
       - name: Run data ingestion
-        run: python ingest_data.py
+        run: python scripts/ingest_data.py
 
       - name: Run analysis
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: python analyze_meeting.py
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: python scripts/analyze_meeting.py
 
       - name: Publish to Ghost
         env:
           GHOST_API_URL: ${{ secrets.GHOST_API_URL }}
           GHOST_ADMIN_KEY: ${{ secrets.GHOST_ADMIN_KEY }}
-        run: python publish_to_ghost.py
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: python scripts/publish_to_ghost.py
 
       - name: Upload transcripts as artifacts
         if: always()

@@ -11,6 +11,8 @@ import os
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+import db
+
 from dotenv import load_dotenv
 import jwt
 import markdown
@@ -24,7 +26,7 @@ logging.basicConfig(
 )
 log = logging.getLogger(__name__)
 
-PROJECT_ROOT = Path(__file__).parent
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DRAFTS_DIR = PROJECT_ROOT / "data" / "drafts"
 LOGO_PATH = PROJECT_ROOT / "assets" / "logo.png"
 
@@ -81,7 +83,10 @@ def upload_image(ghost_url: str, admin_key: str, image_path: Path) -> str | None
     """
     token = _make_ghost_token(admin_key)
     api_endpoint = f"{ghost_url.rstrip('/')}/ghost/api/admin/images/upload/"
-    headers = {"Authorization": f"Ghost {token}"}
+    headers = {
+        "Authorization": f"Ghost {token}",
+        "Accept-Version": "v5.0",
+    }
 
     try:
         with open(image_path, "rb") as f:
@@ -150,9 +155,12 @@ def create_draft(markdown_content: str, ghost_url: str, admin_key: str, feature_
     headers = {
         "Authorization": f"Ghost {token}",
         "Content-Type": "application/json",
+        "Accept-Version": "v5.0",
     }
 
     resp = requests.post(api_endpoint, headers=headers, json=post_data, timeout=30)
+    if not resp.ok:
+        log.error("Ghost API error %d: %s", resp.status_code, resp.text[:500])
     resp.raise_for_status()
     return resp.json()
 
@@ -195,7 +203,7 @@ def main():
         draft_path = _find_latest_draft()
 
     if not draft_path or not draft_path.exists():
-        log.error("No draft file found. Run analyze_meeting.py first.")
+        log.error("No draft file found. Run scripts/analyze_meeting.py first.")
         raise SystemExit(1)
 
     log.info("Publishing draft: %s", draft_path.name)
@@ -222,6 +230,21 @@ def main():
     print(f"  Preview: {preview_url}")
     print("=" * 60 + "\n")
     print("Open the preview link above to review before publishing.")
+
+    # Record newsletter in Supabase
+    if db.is_enabled():
+        today = datetime.now()
+        monday = today - timedelta(days=today.weekday())
+        week_of = monday.strftime("%Y-%m-%d")
+        title = post.get("title", f"Lebo Board Watch — Week of {monday.strftime('%B %d, %Y')}")
+        db.upsert_newsletter(
+            week_of=week_of,
+            title=title,
+            markdown_content=md_content,
+            ghost_post_id=post_id,
+            ghost_post_url=post_url,
+        )
+        log.info("Newsletter recorded in Supabase for week of %s", week_of)
 
 
 if __name__ == "__main__":
