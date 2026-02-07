@@ -2,8 +2,8 @@ name: Lebo Watch — Weekly Digest
 
 on:
   schedule:
-    # Fridays at 9am EST (14:00 UTC)
-    - cron: "0 14 * * 5"
+    # Sundays at 7am ET (12:00 UTC)
+    - cron: "0 12 * * 0"
   workflow_dispatch: # Allow manual runs
 
 jobs:
@@ -31,6 +31,9 @@ jobs:
         run: playwright install chromium --with-deps
 
       - name: Run data ingestion
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
         run: python scripts/ingest_data.py
 
       - name: Run analysis

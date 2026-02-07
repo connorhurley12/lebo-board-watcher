@@ -137,6 +137,7 @@ Below are your research notes from ALL meetings that happened this week. Your jo
 
 **Analysis Lenses:**
 - **When discussing "Studies" or "Plans" (like Active Transportation or Hidden Hollow):** Don't just name the plan. Tell me the *physical* change I will see. Will there be new bike lanes? Will trees be cut down?
+- **When mentioning specific parcels or lesser-known locations (like "Hidden Hollow," "Robb Hollow," etc.):** Always include a brief geographic context so every reader can place it (e.g., "Hidden Hollow, the wooded area bordering the golf course" or "Robb Hollow, the park off Cochran Rd"). Not every resident knows parcel names.
 - **When discussing Resident Comments (like the Leaf Blower guy):** Treat this as a "Signal." Is this a lone wolf, or is the Board receptive? (e.g., "Did the Commissioners ask follow-up questions, or did they just say 'Thank you'?").
 - **When discussing Zoning:** Always mention the specific street names involved (e.g., "Washington Rd," "Beverly Rd").
 
@@ -148,6 +149,7 @@ Each topic must appear in ONE analytical section only. This is a hard rule — v
 **Priority rules when a topic fits multiple sections:**
 - A topic with real debate, conflict, or multi-speaker input → **Deep Dive** (not Smoke Detector)
 - A controversial spending item without much debate → **Smoke Detector** (not The Checkbook)
+- A routine contract renewal (even a large one) with no real debate → **Checkbook** for the dollar amount AND/OR **Smoke Detector** if it's no-bid or unusual — but NOT Deep Dive. Deep Dive is reserved for stories with genuine complexity, conflict, or multi-speaker deliberation. A simple "they renewed it again" is not Deep Dive material.
 - A parks/facility topic that is also a Deep Dive-worthy debate → **Deep Dive** (not Field & Facility Watch)
 - An upcoming date from any section → also include a one-line entry in **Save the Date** (the calendar is a quick-reference list, not analysis — this is the ONE exception to the no-duplication rule)
 
@@ -507,7 +509,7 @@ def _get_anthropic_client():
     return _anthropic_client
 
 
-def analyze_with_anthropic(system_prompt: str, user_prompt: str, model: str = "claude-haiku-4-5", max_tokens: int = 4000) -> str:
+def analyze_with_anthropic(system_prompt: str, user_prompt: str, model: str = "claude-sonnet-4-5-20250514", max_tokens: int = 4000) -> str:
     """Call the Anthropic Messages API."""
     client = _get_anthropic_client()
     response = client.messages.create(
@@ -678,12 +680,22 @@ def _call_llm(provider: str, model: str, system_prompt: str, user_prompt: str, m
                     attempt, max_retries, exc, wait,
                 )
                 time.sleep(wait)
-            elif is_retryable and provider == "anthropic" and os.environ.get("OPENAI_API_KEY"):
-                log.warning(
-                    "Anthropic failed after %d attempts: %s — falling back to OpenAI (gpt-4o)…",
-                    max_retries, exc,
-                )
-                return analyze_with_openai(system_prompt, user_prompt, model="gpt-4o", max_tokens=max_tokens)
+            elif is_retryable and provider == "anthropic":
+                # Fallback chain: Sonnet → Haiku → OpenAI
+                if "sonnet" in model:
+                    log.warning(
+                        "Anthropic Sonnet failed after %d attempts: %s — falling back to Haiku…",
+                        max_retries, exc,
+                    )
+                    return analyze_with_anthropic(system_prompt, user_prompt, model="claude-haiku-4-5", max_tokens=max_tokens)
+                elif os.environ.get("OPENAI_API_KEY"):
+                    log.warning(
+                        "Anthropic Haiku failed: %s — falling back to OpenAI (gpt-4o)…",
+                        exc,
+                    )
+                    return analyze_with_openai(system_prompt, user_prompt, model="gpt-4o", max_tokens=max_tokens)
+                else:
+                    raise
             else:
                 raise
 
@@ -826,7 +838,7 @@ def main():
 
     model = args.model
     if not model:
-        model = "claude-haiku-4-5" if args.provider == "anthropic" else "gpt-4o"
+        model = "claude-sonnet-4-5-20250514" if args.provider == "anthropic" else "gpt-4o"
 
     # Load data — only files within the lookback window
     lookback = args.lookback_days

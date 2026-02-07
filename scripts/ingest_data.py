@@ -6,6 +6,7 @@ Scrapes YouTube meeting videos and BoardDocs agendas.
 
 import argparse
 import asyncio
+import json
 import logging
 import os
 import re
@@ -19,36 +20,21 @@ load_dotenv()
 from youtube_transcript_api import YouTubeTranscriptApi
 
 # ---------------------------------------------------------------------------
-# Configuration — change these for a different town
+# Configuration — loaded from data/configs/<town>.json
 # ---------------------------------------------------------------------------
 
-YOUTUBE_SOURCES = [
-    {
-        "name": "Municipality",
-        "type": "channel",
-        "url": "https://www.youtube.com/@mtlmeetings",
-    },
-    {
-        "name": "SchoolBoard",
-        "type": "playlist",
-        "url": "https://www.youtube.com/playlist?list=PL2Lgvh7YyccoRq1ET1MVKEEXl6WgCm0y0",
-    },
-    {
-        "name": "SchoolBoardPresentations",
-        "type": "playlist",
-        "url": "https://www.youtube.com/playlist?list=PL2Lgvh7YyccqB9XQ_sTpD8dThPnG_GogB",
-    },
-]
-
-BOARDDOCS_URL = "https://go.boarddocs.com/pa/mtlebanon/Board.nsf/Public"
-MTLEB_AGENDAS_URL = "https://mtlebanon.org/about/agendas-minutes/"
-MTLEB_FINANCE_URL = "https://mtlebanon.org/departments/finance/"
-
+CONFIGS_DIR = Path("data/configs")
 DATA_DIR = Path("data")
 TRANSCRIPTS_DIR = DATA_DIR / "transcripts"
 AGENDAS_DIR = DATA_DIR / "agendas"
 MINUTES_DIR = DATA_DIR / "minutes"
 BUDGET_DIR = DATA_DIR / "budget"
+
+
+def load_config(config_path: Path) -> dict:
+    """Load a town config JSON file and return parsed sources."""
+    with open(config_path, "r", encoding="utf-8") as f:
+        return json.load(f)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -199,6 +185,13 @@ def scrape_youtube(sources: list[dict], lookback_days: int = 7):
         log.info("Found %d recent videos", len(videos))
 
         for video in videos:
+            # Skip if we already have a transcript for this video
+            safe_title = sanitize_filename(video["title"])
+            expected_filename = f"{video['date']}_{video['source']}_{safe_title}.txt"
+            if (TRANSCRIPTS_DIR / expected_filename).exists():
+                log.debug("Transcript already saved: %s", expected_filename)
+                continue
+
             transcript = fetch_transcript(video["id"])
             if transcript:
                 save_transcript(video, transcript)
@@ -598,6 +591,12 @@ def _extract_pdf_text(pdf_bytes: bytes) -> str | None:
 def main():
     parser = argparse.ArgumentParser(description="Board Watch — Data Ingestion")
     parser.add_argument(
+        "--config",
+        type=str,
+        default="data/configs/mt-lebanon-pa.json",
+        help="Path to town config JSON (default: data/configs/mt-lebanon-pa.json)",
+    )
+    parser.add_argument(
         "--youtube-only", action="store_true", help="Only scrape YouTube"
     )
     parser.add_argument(
@@ -611,24 +610,46 @@ def main():
     )
     args = parser.parse_args()
 
+    # Load town config
+    config_path = Path(args.config)
+    if not config_path.exists():
+        log.error("Config file not found: %s", config_path)
+        return
+    config = load_config(config_path)
+    sources = config["sources"]
+    log.info("Loaded config for %s, %s", config["town_name"], config["state"])
+
     ensure_dirs()
 
     run_youtube = not args.boarddocs_only
     run_boarddocs = not args.youtube_only
 
-    if run_youtube:
+    # YouTube sources from config
+    youtube_sources = sources.get("municipality_youtube", [])
+    if isinstance(youtube_sources, str):
+        # Backward compat: single URL string → wrap as channel entry
+        youtube_sources = [{"name": "Municipality", "type": "channel", "url": youtube_sources}]
+
+    if run_youtube and youtube_sources:
         log.info("=== YouTube Ingestion ===")
-        scrape_youtube(YOUTUBE_SOURCES, lookback_days=args.lookback_days)
+        scrape_youtube(youtube_sources, lookback_days=args.lookback_days)
 
     if run_boarddocs:
-        log.info("=== BoardDocs Ingestion ===")
-        scrape_boarddocs(BOARDDOCS_URL)
+        boarddocs_url = sources.get("school_board_url")
+        agenda_url = sources.get("agenda_url")
+        budget_url = sources.get("budget_url")
 
-        log.info("=== Mt. Lebanon Website Ingestion ===")
-        scrape_mtleb_agendas(MTLEB_AGENDAS_URL, lookback_days=args.lookback_days)
+        if boarddocs_url:
+            log.info("=== BoardDocs Ingestion ===")
+            scrape_boarddocs(boarddocs_url)
 
-        log.info("=== Finance / Budget Ingestion ===")
-        scrape_finance_budget(MTLEB_FINANCE_URL)
+        if agenda_url:
+            log.info("=== Website Agenda/Minutes Ingestion ===")
+            scrape_mtleb_agendas(agenda_url, lookback_days=args.lookback_days)
+
+        if budget_url:
+            log.info("=== Finance / Budget Ingestion ===")
+            scrape_finance_budget(budget_url)
 
     log.info("Ingestion complete.")
 
