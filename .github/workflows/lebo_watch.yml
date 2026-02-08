@@ -12,6 +12,7 @@ env:
 jobs:
   lebo-watch:
     runs-on: ubuntu-latest
+    environment: prod
 
     steps:
       - name: Checkout code
