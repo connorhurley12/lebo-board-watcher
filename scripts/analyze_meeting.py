@@ -509,7 +509,7 @@ def _get_anthropic_client():
     return _anthropic_client
 
 
-def analyze_with_anthropic(system_prompt: str, user_prompt: str, model: str = "claude-sonnet-4-5-20250514", max_tokens: int = 4000) -> str:
+def analyze_with_anthropic(system_prompt: str, user_prompt: str, model: str = "claude-sonnet-4-5-latest", max_tokens: int = 4000) -> str:
     """Call the Anthropic Messages API."""
     client = _get_anthropic_client()
     response = client.messages.create(
@@ -838,7 +838,7 @@ def main():
 
     model = args.model
     if not model:
-        model = "claude-sonnet-4-5-20250514" if args.provider == "anthropic" else "gpt-4o"
+        model = "claude-sonnet-4-5-latest" if args.provider == "anthropic" else "gpt-4o"
 
     # Load data — only files within the lookback window
     lookback = args.lookback_days
