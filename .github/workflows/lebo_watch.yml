@@ -22,11 +22,6 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install Deno (required by yt-dlp)
-        uses: denoland/setup-deno@v2
-        with:
-          deno-version: v2.x
-
       - name: Install Python dependencies
         run: pip install -r requirements.txt
 
@@ -35,6 +30,7 @@ jobs:
 
       - name: Run data ingestion
         env:
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
         run: python scripts/ingest_data.py

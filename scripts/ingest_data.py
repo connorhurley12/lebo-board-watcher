@@ -14,7 +14,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 from dotenv import load_dotenv
-import yt_dlp
+import requests as _requests
 
 load_dotenv()
 from youtube_transcript_api import YouTubeTranscriptApi
@@ -66,84 +66,102 @@ def ensure_dirs():
 # YouTube Scraper
 # ---------------------------------------------------------------------------
 
-class _QuietLogger:
-    """Custom logger for yt_dlp that silences 'not available' noise."""
+YOUTUBE_API_BASE = "https://www.googleapis.com/youtube/v3"
+YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY", "")
 
-    def debug(self, msg):
-        pass
 
-    def info(self, msg):
-        pass
+def _yt_api_get(endpoint: str, params: dict) -> dict | None:
+    """Make a YouTube Data API v3 GET request."""
+    params["key"] = YOUTUBE_API_KEY
+    resp = _requests.get(f"{YOUTUBE_API_BASE}/{endpoint}", params=params, timeout=15)
+    if resp.status_code != 200:
+        log.error("YouTube API error (%s): %s", resp.status_code, resp.text[:300])
+        return None
+    return resp.json()
 
-    def warning(self, msg):
-        log.debug("yt_dlp: %s", msg)
 
-    def error(self, msg):
-        # Only surface errors that aren't "This video is not available"
-        if "not available" not in str(msg).lower():
-            log.warning("yt_dlp: %s", msg)
+def _resolve_channel_uploads_playlist(channel_url: str) -> str | None:
+    """Given a channel URL, return its 'uploads' playlist ID."""
+    # Handle @handle-style URLs
+    handle = channel_url.rstrip("/").split("/")[-1]
+    if handle.startswith("@"):
+        data = _yt_api_get("channels", {"forHandle": handle, "part": "contentDetails"})
+    else:
+        data = _yt_api_get("channels", {"id": handle, "part": "contentDetails"})
+
+    if not data or not data.get("items"):
+        log.error("Could not resolve channel: %s", channel_url)
+        return None
+    return data["items"][0]["contentDetails"]["relatedPlaylists"]["uploads"]
+
+
+def _extract_playlist_id(url: str) -> str | None:
+    """Extract playlist ID from a YouTube playlist URL."""
+    match = re.search(r"list=([A-Za-z0-9_-]+)", url)
+    return match.group(1) if match else None
 
 
 def fetch_video_list(source: dict, lookback_days: int) -> list[dict]:
     """Return metadata for videos published within *lookback_days*."""
+    if not YOUTUBE_API_KEY:
+        log.error("YOUTUBE_API_KEY not set — cannot list YouTube videos")
+        return []
+
     cutoff = datetime.now() - timedelta(days=lookback_days)
-    cutoff_str = cutoff.strftime("%Y%m%d")
-    url = source["url"]
 
-    # Channels need /videos appended for a reliable listing
-    if source["type"] == "channel" and not url.endswith("/videos"):
-        url = url.rstrip("/") + "/videos"
+    # Resolve to a playlist ID
+    if source["type"] == "channel":
+        playlist_id = _resolve_channel_uploads_playlist(source["url"])
+    else:
+        playlist_id = _extract_playlist_id(source["url"])
 
-    # Use full (non-flat) extraction so yt_dlp resolves upload_date for us.
-    # The dateafter filter tells yt_dlp to stop once it hits older videos,
-    # and break_on_reject avoids walking the entire back-catalog.
-    ydl_opts = {
-        "quiet": True,
-        "no_warnings": True,
-        "ignoreerrors": True,          # skip unavailable videos silently
-        "noprogress": True,
-        "logger": _QuietLogger(),      # suppress yt_dlp's own ERROR prints
-        "playlistend": 30,             # safety cap
-        "dateafter": cutoff_str,       # only videos on or after cutoff
-        "break_on_reject": True,       # stop playlist once a video is too old
-        "remote_components": ["ejs:github"],  # required for YouTube JS challenge solving
-    }
+    if not playlist_id:
+        log.error("Could not determine playlist ID for %s", source["url"])
+        return []
 
+    # Fetch playlist items (most recent first)
     videos = []
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        try:
-            info = ydl.extract_info(url, download=False)
-        except Exception as exc:
-            log.error("yt_dlp extraction failed for %s: %s", url, exc)
-            return []
+    page_token = None
 
-        if info is None:
-            return []
+    while True:
+        params = {
+            "playlistId": playlist_id,
+            "part": "snippet",
+            "maxResults": 30,
+        }
+        if page_token:
+            params["pageToken"] = page_token
 
-        # Single video (unlikely) vs playlist
-        entries = info.get("entries") or ([info] if info.get("id") else [])
+        data = _yt_api_get("playlistItems", params)
+        if not data:
+            break
 
-        for entry in entries:
-            if entry is None:
+        for item in data.get("items", []):
+            snippet = item.get("snippet", {})
+            published = snippet.get("publishedAt", "")
+            video_id = snippet.get("resourceId", {}).get("videoId")
+
+            if not video_id or not published:
                 continue
 
-            video_id = entry.get("id")
-            upload_date_str = entry.get("upload_date")
-
-            if not video_id or not upload_date_str:
-                continue
-
-            upload_date = datetime.strptime(upload_date_str, "%Y%m%d")
+            upload_date = datetime.fromisoformat(published.replace("Z", "+00:00")).replace(tzinfo=None)
             if upload_date < cutoff:
-                continue
+                # Playlist is newest-first, so we can stop early
+                page_token = None
+                break
 
             videos.append({
                 "id": video_id,
-                "title": entry.get("title", "Untitled"),
+                "title": snippet.get("title", "Untitled"),
                 "date": upload_date.strftime("%Y-%m-%d"),
                 "url": f"https://www.youtube.com/watch?v={video_id}",
                 "source": source["name"],
             })
+        else:
+            page_token = data.get("nextPageToken")
+
+        if not page_token:
+            break
 
     return videos
 
