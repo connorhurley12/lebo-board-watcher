@@ -1,5 +1,6 @@
 data/*
 !data/configs/
+!data/drafts/
 .env
 __pycache__/
 *.pyc

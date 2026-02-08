@@ -2,7 +2,7 @@
 - **Location:** Mt. Lebanon, PA (Suburb of Pittsburgh).
 - **Government Style:** "Home Rule Municipality" with a Commission-Manager form of government.
 - **School District:** Mt. Lebanon School District (MTLSD) is a separate legal entity from the Municipality.
-- **Key Geography:** Washington Road (Uptown), Beverly Road, The Galleria, Bird Park, Mt. Lebanon Park.
+- **Key Geography:** Washington Road (Uptown), Beverly Road, The Galleria, Bird Park, Mt. Lebanon Park, Mt. Lebanon Public Library (16 Castle Shannon Blvd).
 - **School Buildings:** - High School (Recently renovated, massive project).
   - Middle Schools: Mellon, Jefferson.
   - Elementary: Foster, Hoover, Howe, Lincoln, Markham, Washington, Jefferson.

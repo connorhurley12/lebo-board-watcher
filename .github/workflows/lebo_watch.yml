@@ -63,6 +63,15 @@ jobs:
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
         run: python scripts/publish_to_ghost.py
 
+      - name: Commit and push drafts
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/drafts/
+          git diff --cached --quiet || git commit -m "Add weekly digest draft [skip ci]"
+          git push
+
       - name: Upload transcripts as artifacts
         if: always()
         uses: actions/upload-artifact@v4

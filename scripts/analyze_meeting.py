@@ -155,6 +155,10 @@ Each topic must appear in ONE analytical section only. This is a hard rule — v
 
 **Before writing each section, mentally check:** "Did I already cover this topic above?" If yes, skip it and find something new.
 
+**No topic may appear in more than 2 sections total** (one analytical section + a one-line Save the Date calendar entry is the only allowed combination). If you find the same story in Deep Dive AND Smoke Detector, or Deep Dive AND Checkbook, that is a failure — delete the duplicate and replace it with a different item.
+
+**HARD STOP — After drafting each Smoke Detector item, re-read your Deep Dive section above. If ANY Smoke Detector item covers the same topic as a Deep Dive entry, DELETE IT and find a different item. Zero overlap is acceptable; one overlap is a failure.**
+
 **Structure:**
 Use the following Markdown structure exactly:
 
@@ -173,7 +177,11 @@ Use the following Markdown structure exactly:
 - Bad: "Trash Study Update Given."
 - Good: "Municipal Trash Service Could Cost Taxpayers $2M More Per Year."
 
-Format each as a punchy, click-worthy bullet. These are teasers only — do not repeat the full analysis here.)
+Format each as a single punchy sentence — MAX 20 words. These are teasers that pull readers into The Deep Dive. No analysis, no dollar breakdowns, no second sentences.
+- Bad: "In-House Trash Collection Could Cost $6.2M+ Annually — Nearly 50% More Than Current Contract. The Financial Management Board is studying whether..."
+- Good: "In-House Trash Could Cost Taxpayers 50% More — and One Truck Breakdown Shuts It All Down."
+- Bad: "The parade committee has nearly 100% leadership turnover, no veterans in charge, and is desperately seeking volunteers."
+- Good: "Memorial Day Parade Has $10K in the Bank but Almost No One Left to Run It.")
 
 # 🏛️ The Deep Dive
 (Pick the top topics from ANY meeting this week that involve real debate, conflict, or significant decisions — typically 3-5 topics, but more if the week was eventful. Prioritize variety across meeting bodies: don't let one meeting dominate if other bodies had interesting stories too.
@@ -184,16 +192,20 @@ For each topic, write it in the style of an investigative summary using this str
 2. **The Hidden Detail:** Find the one specific detail a resident would have missed if they weren't in the room — the offhand admission, the awkward silence, the buried caveat. (e.g., "The Board admitted one broken truck could shut down the entire operation" or "The developer did zero outreach to adjacent properties").
 3. **The "Next Step" Prediction:** Based on the Board's tone and body language cues in the transcript, what will likely happen next? Be specific. (e.g., "Given the $2M gap, expect the Board to renew the private contract rather than going in-house" or "The Board tabled all three motions — expect revised plans at the March meeting").
 
-This section is for topics with substance — not routine approvals or one-line mentions.)
+This section is for topics with substance — not routine approvals or one-line mentions.
+
+**Routine contract renewals — even large ones — are NOT Deep Dive material unless there was genuine controversy (public opposition, split vote, or price dispute). If the only story is "they renewed the contract," put it in The Checkbook and move on.**)
 
 # 🗣️ Quote of the Week
-(Find the most interesting, passionate, or funny quote from any meeting this week. Always include the speaker's role and which meeting it came from. If none exists, omit this section.)
+(Find the most interesting, passionate, or funny quote from any meeting this week. Always include the speaker's role and which meeting it came from.
+
+The quote MUST NOT come from a topic already covered in The Deep Dive. Find a quote from a DIFFERENT meeting or topic to keep the newsletter fresh. If every notable quote is already used in The Deep Dive, omit this section.)
 
 # 💸 The Checkbook
 (From across all meetings, list the top 3 largest *routine* dollar amounts — contracts, vendor payments, capital purchases. Format each as: "**$Amount:** [Item Description] (Who gets the money)". Do NOT include spending items that are controversial — those belong in the Smoke Detector. If no dollar amounts were mentioned, omit this section.)
 
 # 🏟️ Field & Facility Watch
-(Quick-hit updates on sports and parks facilities from any meeting. Scan for: Turf, Grass, Permits, Lights, Ice Rink, Pool, Courts, Wildcat Fields, Middle Field, Main Park, Bird Park, Robb Hollow, Hidden Hollow, or Coaching Appointments. Summarize each in 1 sentence. Do NOT include items already covered in The Deep Dive. If none of these topics came up, omit this section.)
+(Quick-hit updates on sports and parks facilities from any meeting. Scan for: Turf, Grass, Permits, Lights, Ice Rink, Pool, Courts, Wildcat Fields, Middle Field, Main Park, Bird Park, Robb Hollow, Hidden Hollow, or Coaching Appointments. Summarize each in 1 sentence. Do NOT include items already covered in The Deep Dive. Do not include dates that have already passed — only mention upcoming events and timelines. If none of these topics came up, omit this section.)
 
 # 🕵️‍♂️ The Smoke Detector
 (Find items that would make a resident angry or worried — from any meeting this week that was NOT already covered in The Deep Dive. NEVER repeat a topic from The Deep Dive here — find something new.
@@ -213,7 +225,7 @@ DO include:
 
 4. **Zoning Fights:** Specific mentions of "parking variances," "traffic studies," "setback variances," "multi-family," "ADU," "density," or "character of the neighborhood" — especially where residents testified *against* a developer. Flag any project that puts something "big" next to something "small." Always include street names.
 
-5. **Split Vote Alert:** Use the **Structured Vote Log** above. Report any vote that is NOT unanimous (e.g., 4-1 or 3-2). Identify EXACTLY who voted "No" or abstained and summarize their reason. Omit routine unanimous approvals entirely.
+5. **Split Vote Alert:** Use the **Structured Vote Log** above. Report any vote that is NOT unanimous (e.g., 4-1 or 3-2). Identify EXACTLY who voted "No" or abstained and summarize their reason. Omit routine unanimous approvals entirely. **If no split votes occurred, do not write a Split Vote Alert at all. Do not explain WHY there were no split votes or speculate about non-votes. Simply skip this pattern.**
 
 Format each item as: "⚠️ **[Category]:** [Headline] — [Why it's risky or controversial for residents]."
 
@@ -229,7 +241,9 @@ If none of these patterns appear, omit this section.)
 Format each disconnect as:
 "⚠️ **The Room vs. The Board:** [X] residents spoke [for/against] [topic], but the Board voted to [action]. [X]% of speakers were on the opposite side of the final vote."
 
-If public comment and board votes were aligned, or if no clear public comment occurred on voted items, omit this section entirely. Only flag genuine disconnects where residents showed up to speak and the outcome went the other way.)
+If no disconnects exist, output NOTHING for this section — not even the heading. Do not write "No disconnects detected" or any explanation. Just skip it entirely.
+
+Only flag genuine disconnects where **2 or more residents** spoke on the same topic and the outcome went the other way. A single speaker (N=1) is not a statistically meaningful signal — do not report "100% of speakers (1 person)" as a disconnect.)
 
 # 📅 Save the Date
 (Filter dates from ALL meetings using this strict logic:
@@ -237,11 +251,12 @@ If public comment and board votes were aligned, or if no clear public comment oc
 **KEEP:**
 - **Public Utility:** "No School" days, trash delay/schedule changes, tax deadlines.
 - **High Stakes Meetings:** Public hearings, zoning appeals, or any meeting where a specific controversial vote is scheduled.
-- **Future Only:** DISCARD any date that has already passed.
+- **Future Only:** DISCARD any date that has already passed. **CRITICAL: Check every date against today's publish date (provided below). Any date BEFORE today must be excluded.**
 
 **DISCARD:**
 - Generic "Regular Meeting" dates — UNLESS a specific controversial topic is on that meeting's agenda.
-- Internal scheduling meetings, awards banquets, or staff development days that don't affect residents.
+- Internal scheduling meetings, awards banquets, awards dinners, graduation ceremonies, or celebratory events.
+- Staff development days, professional development, or internal training (these don't affect residents unless the library/school CLOSES — in which case, frame it as a closure date, not a development day).
 
 Format each as: "**[Date]:** [Event Name] ([Why you should go / What is being decided])."
 
@@ -627,6 +642,9 @@ def build_newsletter_prompt(
     if all_spending:
         parts.append(format_spending_for_newsletter(all_spending))
         parts.append("\n---\n\n")
+
+    parts.append(f"**Today's publish date is {datetime.now().strftime('%B %d, %Y')}. "
+                 "Discard any Save the Date or Field & Facility Watch entries before this date.**\n\n")
 
     parts.append("## This Week's Meeting Notes\n\n")
     for extract in meeting_extracts:
