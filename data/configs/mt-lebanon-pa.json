@@ -1,0 +1,32 @@
+{
+  "town_name": "Mt. Lebanon",
+  "state": "PA",
+  "generated_at": "2026-02-01T13:29:54",
+  "sources": {
+    "municipality_website": "https://mtlebanon.org",
+    "municipality_youtube": [
+      {
+        "name": "Municipality",
+        "type": "channel",
+        "url": "https://www.youtube.com/@mtlmeetings"
+      },
+      {
+        "name": "SchoolBoard",
+        "type": "playlist",
+        "url": "https://www.youtube.com/playlist?list=PL2Lgvh7YyccoRq1ET1MVKEEXl6WgCm0y0"
+      },
+      {
+        "name": "SchoolBoardPresentations",
+        "type": "playlist",
+        "url": "https://www.youtube.com/playlist?list=PL2Lgvh7YyccqB9XQ_sTpD8dThPnG_GogB"
+      }
+    ],
+    "school_board_provider": "boarddocs",
+    "school_board_url": "https://go.boarddocs.com/pa/mtlebanon/Board.nsf/Public",
+    "municipal_code_provider": "ecode360",
+    "municipal_code_url": "https://ecode360.com/MO6716",
+    "agenda_provider": "boarddocs",
+    "agenda_url": "https://mtlebanon.org/about/agendas-minutes/",
+    "budget_url": "https://mtlebanon.org/departments/finance/"
+  }
+}

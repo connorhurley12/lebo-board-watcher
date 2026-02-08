@@ -1,4 +1,5 @@
-data/
+data/*
+!data/configs/
 .env
 __pycache__/
 *.pyc

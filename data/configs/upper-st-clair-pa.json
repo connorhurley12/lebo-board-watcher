@@ -1,0 +1,16 @@
+{
+  "town_name": "Upper St. Clair",
+  "state": "PA",
+  "generated_at": "2026-02-02T09:08:17",
+  "sources": {
+    "municipality_website": "https://et.cybo.com",
+    "municipality_youtube": "https://www.youtube.com/@twpusc.television",
+    "school_board_provider": "boarddocs",
+    "school_board_url": "https://go.boarddocs.com/pa/upsc/Board.nsf/goto?open",
+    "municipal_code_provider": "ecode360",
+    "municipal_code_url": "https://ecode360.com/8341779",
+    "agenda_provider": "boarddocs",
+    "agenda_url": "https://www.uscsd.k12.pa.us/information/school-board/school-board-meetings",
+    "budget_url": null
+  }
+}
