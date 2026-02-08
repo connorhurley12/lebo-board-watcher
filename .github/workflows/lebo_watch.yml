@@ -6,6 +6,9 @@ on:
     - cron: "0 12 * * 0"
   workflow_dispatch: # Allow manual runs
 
+env:
+  PYTHONPATH: scripts
+
 jobs:
   lebo-watch:
     runs-on: ubuntu-latest

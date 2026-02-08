@@ -15,7 +15,7 @@ Ingest → Extract → Consolidate → Publish
 3. **Consolidate** (`scripts/analyze_meeting.py` Phase 2) — Combines all per-meeting extracts with historical data from Supabase into one cohesive weekly newsletter.
 4. **Publish** (`scripts/publish_to_ghost.py`) — Posts the newsletter as a draft to Ghost CMS for review before publishing.
 
-A GitHub Actions workflow runs the full pipeline every Friday at 9 AM EST.
+A GitHub Actions workflow runs the full pipeline every Sunday at 7 AM ET.
 
 ## Project Structure
 

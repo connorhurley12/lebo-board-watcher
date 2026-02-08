@@ -33,7 +33,7 @@ LOGO_PATH = PROJECT_ROOT / "assets" / "logo.png"
 INTRO_HEADER = (
     "<p><strong>Lebo Board Watch</strong> is an AI-generated weekly digest of Mt. Lebanon local government "
     "meetings — school board, municipal commission, and more — so busy residents can stay informed without "
-    "sitting through hours of public meetings. New editions drop every Friday morning.</p>\n\n"
+    "sitting through hours of public meetings. New editions drop every Sunday morning.</p>\n\n"
     "---\n\n"
 )
 
@@ -132,10 +132,9 @@ def create_draft(markdown_content: str, ghost_url: str, admin_key: str, feature_
         }
     )
 
-    # Generate a weekly digest title anchored to Monday of the current week
+    # Generate a weekly digest title using today's publish date
     today = datetime.now()
-    monday = today - timedelta(days=today.weekday())
-    title = f"Lebo Board Watch — Week of {monday.strftime('%B %d, %Y')}"
+    title = f"Lebo Board Watch — {today.strftime('%B %d, %Y')}"
 
     post_body = {
         "title": title,
@@ -236,7 +235,7 @@ def main():
         today = datetime.now()
         monday = today - timedelta(days=today.weekday())
         week_of = monday.strftime("%Y-%m-%d")
-        title = post.get("title", f"Lebo Board Watch — Week of {monday.strftime('%B %d, %Y')}")
+        title = post.get("title", f"Lebo Board Watch — {today.strftime('%B %d, %Y')}")
         db.upsert_newsletter(
             week_of=week_of,
             title=title,
