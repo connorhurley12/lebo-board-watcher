@@ -17,7 +17,8 @@ from dotenv import load_dotenv
 import requests as _requests
 
 load_dotenv()
-from youtube_transcript_api import YouTubeTranscriptApi
+import xml.etree.ElementTree as _ET
+from html import unescape as _unescape
 
 # ---------------------------------------------------------------------------
 # Configuration — loaded from data/configs/<town>.json
@@ -166,12 +167,73 @@ def fetch_video_list(source: dict, lookback_days: int) -> list[dict]:
     return videos
 
 
+_INNERTUBE_HEADERS = {
+    "Content-Type": "application/json",
+    "User-Agent": "com.google.android.youtube/19.29.37 (Linux; U; Android 12; US) gzip",
+}
+
+_INNERTUBE_CLIENT = {
+    "clientName": "ANDROID",
+    "clientVersion": "19.29.37",
+    "androidSdkVersion": 30,
+    "osName": "Android",
+    "osVersion": "12",
+    "platform": "MOBILE",
+}
+
+
 def fetch_transcript(video_id: str) -> str | None:
-    """Download English captions for a video. Returns None on failure."""
+    """Fetch auto-generated captions via YouTube's Innertube API."""
     try:
-        api = YouTubeTranscriptApi()
-        transcript = api.fetch(video_id, languages=["en"])
-        return " ".join(snippet.text for snippet in transcript.snippets)
+        # Step 1: Get caption track URL from the player endpoint
+        payload = {
+            "context": {"client": _INNERTUBE_CLIENT},
+            "videoId": video_id,
+        }
+        resp = _requests.post(
+            "https://www.youtube.com/youtubei/v1/player",
+            json=payload,
+            headers=_INNERTUBE_HEADERS,
+            timeout=15,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+
+        tracks = (
+            data.get("captions", {})
+            .get("playerCaptionsTracklistRenderer", {})
+            .get("captionTracks", [])
+        )
+        if not tracks:
+            status = data.get("playabilityStatus", {}).get("status", "unknown")
+            log.warning("No caption tracks for %s (player status: %s)", video_id, status)
+            return None
+
+        # Prefer English, fall back to first available track
+        caption_url = None
+        for track in tracks:
+            if track.get("languageCode", "").startswith("en"):
+                caption_url = track["baseUrl"]
+                break
+        if not caption_url:
+            caption_url = tracks[0]["baseUrl"]
+
+        # Step 2: Fetch the caption XML
+        cap_resp = _requests.get(caption_url, timeout=15)
+        cap_resp.raise_for_status()
+
+        root = _ET.fromstring(cap_resp.text)
+        texts = []
+        for elem in root.iter():
+            if elem.text and elem.text.strip():
+                texts.append(_unescape(elem.text.strip()))
+
+        if not texts:
+            log.warning("Caption XML empty for %s", video_id)
+            return None
+
+        return " ".join(texts)
+
     except Exception as exc:
         log.warning("No transcript for %s: %s", video_id, exc)
         return None
