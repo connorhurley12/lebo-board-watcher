@@ -8,6 +8,7 @@ import argparse
 import json
 import logging
 import os
+import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -108,6 +109,22 @@ def upload_image(ghost_url: str, admin_key: str, image_path: Path) -> str | None
 # ---------------------------------------------------------------------------
 
 
+def build_html(markdown_content: str) -> str:
+    """Convert markdown draft to full HTML with intro header and footer."""
+    html_body = INTRO_HEADER
+    html_body += markdown.markdown(markdown_content, extensions=["extra", "smarty"])
+    html_body += MONETIZATION_FOOTER
+    return html_body
+
+
+def save_html(html_body: str, draft_path: Path) -> Path:
+    """Save the HTML version next to the markdown draft for easy copy-paste."""
+    html_path = draft_path.with_suffix(".html")
+    html_path.write_text(html_body, encoding="utf-8")
+    log.info("Saved HTML copy: %s", html_path.name)
+    return html_path
+
+
 def create_draft(markdown_content: str, ghost_url: str, admin_key: str, feature_image_url: str | None = None) -> dict:
     """
     Post a draft to Ghost.
@@ -116,10 +133,7 @@ def create_draft(markdown_content: str, ghost_url: str, admin_key: str, feature_
     """
     token = _make_ghost_token(admin_key)
 
-    # Convert Markdown → HTML, prepend intro blurb, append footer
-    html_body = INTRO_HEADER
-    html_body += markdown.markdown(markdown_content, extensions=["extra", "smarty"])
-    html_body += MONETIZATION_FOOTER
+    html_body = build_html(markdown_content)
 
     # Ghost expects content wrapped in a mobiledoc JSON structure
     mobiledoc = json.dumps(
@@ -157,9 +171,31 @@ def create_draft(markdown_content: str, ghost_url: str, admin_key: str, feature_
         "Accept-Version": "v5.0",
     }
 
-    resp = requests.post(api_endpoint, headers=headers, json=post_data, timeout=30)
-    if not resp.ok:
+    # Retry with exponential backoff for transient errors (502, 503, 504)
+    max_retries = 3
+    for attempt in range(1, max_retries + 1):
+        # Generate a fresh token for each attempt (they expire after 5 min)
+        if attempt > 1:
+            token = _make_ghost_token(admin_key)
+            headers["Authorization"] = f"Ghost {token}"
+
+        resp = requests.post(api_endpoint, headers=headers, json=post_data, timeout=120)
+        if resp.ok:
+            return resp.json()
+
+        if resp.status_code in (502, 503, 504) and attempt < max_retries:
+            wait = 10 * attempt
+            log.warning(
+                "Ghost API returned %d (attempt %d/%d) — retrying in %ds…",
+                resp.status_code, attempt, max_retries, wait,
+            )
+            time.sleep(wait)
+            continue
+
         log.error("Ghost API error %d: %s", resp.status_code, resp.text[:500])
+        resp.raise_for_status()
+
+    # Should not reach here, but just in case
     resp.raise_for_status()
     return resp.json()
 
@@ -186,14 +222,16 @@ def main():
         default=None,
         help="Path to a markdown draft. Defaults to the most recent file in data/drafts/.",
     )
+    parser.add_argument(
+        "--no-image",
+        action="store_true",
+        default=False,
+        help="Skip feature image upload.",
+    )
     args = parser.parse_args()
 
     ghost_url = os.environ.get("GHOST_API_URL")
     admin_key = os.environ.get("GHOST_ADMIN_KEY")
-
-    if not ghost_url or not admin_key:
-        log.error("Set GHOST_API_URL and GHOST_ADMIN_KEY environment variables.")
-        raise SystemExit(1)
 
     # Resolve the file to publish
     if args.file:
@@ -208,13 +246,39 @@ def main():
     log.info("Publishing draft: %s", draft_path.name)
     md_content = draft_path.read_text(encoding="utf-8")
 
+    # Strip the generated-timestamp HTML comment (not needed in the published post)
+    import re
+    md_content = re.sub(r"<!--.*?-->\s*", "", md_content, flags=re.DOTALL)
+
+    # Always save an HTML copy for easy copy-paste into Ghost
+    html_body = build_html(md_content)
+    html_path = save_html(html_body, draft_path)
+
+    print("\n" + "=" * 60)
+    print(f"  HTML saved: {html_path}")
+    print("  Copy-paste this file into Ghost's HTML editor.")
+    print("=" * 60 + "\n")
+
+    # Publish to Ghost API if credentials are available
+    if not ghost_url or not admin_key:
+        log.warning("GHOST_API_URL or GHOST_ADMIN_KEY not set — skipping Ghost API publish.")
+        log.info("HTML file is ready for manual copy-paste: %s", html_path)
+        return
+
     # Upload the logo as the feature image
     feature_image_url = None
-    if LOGO_PATH.exists():
+    if not args.no_image and LOGO_PATH.exists():
         log.info("Uploading feature image: %s", LOGO_PATH.name)
         feature_image_url = upload_image(ghost_url, admin_key, LOGO_PATH)
+    elif args.no_image:
+        log.info("Skipping feature image upload (--no-image)")
 
-    result = create_draft(md_content, ghost_url, admin_key, feature_image_url=feature_image_url)
+    try:
+        result = create_draft(md_content, ghost_url, admin_key, feature_image_url=feature_image_url)
+    except Exception as exc:
+        log.error("Ghost API publish failed: %s", exc)
+        log.info("HTML file is ready for manual copy-paste: %s", html_path)
+        return
 
     post = result["posts"][0]
     post_url = post.get("url", "")
