@@ -183,9 +183,20 @@ _INNERTUBE_CLIENT = {
 
 
 def fetch_transcript(video_id: str) -> str | None:
-    """Fetch auto-generated captions via YouTube's Innertube API."""
+    """Fetch auto-generated captions, trying youtube-transcript-api first."""
+    # Primary: use youtube-transcript-api (actively maintained library)
     try:
-        # Step 1: Get caption track URL from the player endpoint
+        from youtube_transcript_api import YouTubeTranscriptApi
+        ytt = YouTubeTranscriptApi()
+        transcript = ytt.fetch(video_id, languages=["en"])
+        texts = [snippet.text for snippet in transcript]
+        if texts:
+            return " ".join(texts)
+    except Exception as exc:
+        log.warning("youtube-transcript-api failed for %s: %s", video_id, exc)
+
+    # Fallback: manual Innertube API call
+    try:
         payload = {
             "context": {"client": _INNERTUBE_CLIENT},
             "videoId": video_id,
@@ -209,7 +220,6 @@ def fetch_transcript(video_id: str) -> str | None:
             log.warning("No caption tracks for %s (player status: %s)", video_id, status)
             return None
 
-        # Prefer English, fall back to first available track
         caption_url = None
         for track in tracks:
             if track.get("languageCode", "").startswith("en"):
@@ -218,7 +228,6 @@ def fetch_transcript(video_id: str) -> str | None:
         if not caption_url:
             caption_url = tracks[0]["baseUrl"]
 
-        # Step 2: Fetch the caption XML
         cap_resp = _requests.get(caption_url, timeout=15)
         cap_resp.raise_for_status()
 

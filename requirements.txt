@@ -10,3 +10,4 @@ python-dotenv
 supabase
 ddgs
 pytest
+youtube-transcript-api
