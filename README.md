@@ -12,7 +12,7 @@ Ingest → Extract → Consolidate → Publish
 
 1. **Ingest** (`scripts/ingest_data.py`) — Scrapes YouTube transcripts, BoardDocs agendas, official meeting minutes (PDF), and budget documents from municipal websites.
 2. **Extract** (`scripts/analyze_meeting.py` Phase 1) — Sends each meeting transcript to an LLM (Claude or GPT-4) to extract votes, spending items, key debates, quotes, and citizen comment sentiment.
-3. **Consolidate** (`scripts/analyze_meeting.py` Phase 2) — Combines all per-meeting extracts with historical data from Supabase into one cohesive weekly newsletter.
+3. **Consolidate** (`scripts/analyze_meeting.py` Phase 2) — Combines all per-meeting extracts into one cohesive weekly newsletter.
 4. **Publish** (`scripts/publish_to_ghost.py`) — Posts the newsletter as a draft to Ghost CMS for review before publishing.
 
 A GitHub Actions workflow runs the full pipeline every Sunday at 7 AM ET.
@@ -25,8 +25,7 @@ community-pulse/
 │   ├── ingest_data.py      # Data scraping (YouTube, BoardDocs, PDFs)
 │   ├── analyze_meeting.py  # LLM extraction + newsletter generation
 │   ├── publish_to_ghost.py # Ghost CMS draft publisher
-│   ├── recon_township.py   # Township data source discovery tool
-│   └── db.py               # Supabase persistence layer
+│   └── recon_township.py   # Township data source discovery tool
 ├── project_context.md      # System prompt with Mt. Lebanon context
 ├── requirements.txt
 ├── .env.example
@@ -41,8 +40,6 @@ community-pulse/
 │   ├── votes/              # Structured vote records (JSON)
 │   ├── drafts/             # Generated newsletter markdown
 │   └── configs/            # Township recon output
-├── migrations/
-│   └── 001_initial_schema.sql  # Supabase schema
 └── .github/
     └── workflows/
         └── lebo_watch.yml  # Weekly automation
@@ -54,7 +51,6 @@ community-pulse/
 
 - Python 3.12+
 - An Anthropic or OpenAI API key
-- (Optional) Supabase project for historical tracking
 - (Optional) Ghost CMS site for publishing
 - (Optional) Playwright for BoardDocs scraping
 
@@ -83,18 +79,8 @@ cp .env.example .env
 | `OPENAI_API_KEY` | Yes* | OpenAI API key (*one of the two is required) |
 | `GHOST_API_URL` | No | Ghost site URL |
 | `GHOST_ADMIN_KEY` | No | Ghost Admin API key (format: `{id}:{secret}`) |
-| `SUPABASE_URL` | No | Supabase project URL |
-| `SUPABASE_KEY` | No | Supabase service role key |
 
-Supabase and Ghost are optional — the pipeline works in file-only mode without them.
-
-### Database Setup (Optional)
-
-If using Supabase, run the migration to create tables for meetings, votes, spending, officials, and newsletters:
-
-```sql
--- Run migrations/001_initial_schema.sql in your Supabase SQL editor
-```
+Ghost is optional — the pipeline works in file-only mode without it.
 
 ## Usage
 
@@ -169,6 +155,5 @@ Each generated newsletter includes:
 ## Architecture Notes
 
 - **Extraction caching**: Phase 1 results are cached in `data/extracts/`. Use `--retry-failed` to skip already-processed meetings, or `--digest-only` to skip Phase 1 entirely and regenerate the newsletter from cache.
-- **Historical context**: When Supabase is enabled, Phase 2 pulls repeat vendor spending, project totals, and official dissent patterns from the last year to give the LLM richer context.
 - **Rate limiting**: 90-second delays between LLM calls to stay within API rate limits.
-- **Graceful degradation**: Supabase and Ghost are optional. Without them, the pipeline still generates local markdown drafts.
+- **Graceful degradation**: Ghost is optional. Without it, the pipeline still generates local markdown drafts.

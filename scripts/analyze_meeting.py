@@ -15,8 +15,6 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-import db
-
 load_dotenv()
 
 logging.basicConfig(
@@ -427,64 +425,8 @@ def format_spending_for_newsletter(all_spending: list[dict]) -> str:
 
 
 def build_historical_context() -> str:
-    """Query Supabase for historical spending and vote patterns.
-
-    Returns a text block to prepend to the Phase 2 prompt, or empty string
-    if Supabase is not enabled or no historical data exists.
-    """
-    import db
-
-    if not db.is_enabled():
-        return ""
-
-    parts: list[str] = ["## Historical Context (from database)\n\n"]
-    has_content = False
-
-    # Spending by vendor — highlight repeat vendors
-    summary = db.get_recent_spending_summary(lookback_days=365)
-    repeat_vendors = {
-        v: data for v, data in summary["by_vendor"].items()
-        if data["count"] >= 2 and v not in ("N/A", "Unknown")
-    }
-    if repeat_vendors:
-        has_content = True
-        parts.append("### Repeat Vendors (2+ payments this year)\n")
-        for vendor, data in sorted(
-            repeat_vendors.items(), key=lambda x: x[1]["total"], reverse=True
-        ):
-            parts.append(
-                f"- **{vendor}**: {data['count']} payments totaling ${data['total']:,.2f}\n"
-            )
-        parts.append("\n")
-
-    # Project cumulative spending
-    if summary["by_project"]:
-        has_content = True
-        parts.append("### Project Spending Totals\n")
-        for project, data in sorted(
-            summary["by_project"].items(), key=lambda x: x[1]["total"], reverse=True
-        ):
-            parts.append(
-                f"- **{project}**: ${data['total']:,.2f} across {data['count']} line items\n"
-            )
-        parts.append("\n")
-
-    # Non-unanimous vote patterns by official
-    dissent = db.get_dissent_summary(lookback_days=365)
-    if dissent:
-        has_content = True
-        parts.append("### Dissent Patterns (non-unanimous votes)\n")
-        for name, data in sorted(
-            dissent.items(), key=lambda x: x[1]["no_count"], reverse=True
-        ):
-            topics_preview = "; ".join(data["topics"][:3])
-            no_str = f"voted No on {data['no_count']} item(s)" if data["no_count"] else ""
-            abstain_str = f"abstained on {data['abstain_count']} item(s)" if data["abstain_count"] else ""
-            combined = ", ".join(filter(None, [no_str, abstain_str]))
-            parts.append(f"- **{name}**: {combined} (e.g., {topics_preview})\n")
-        parts.append("\n")
-
-    return "".join(parts) if has_content else ""
+    """Placeholder for historical context. Returns empty string."""
+    return ""
 
 
 # ---------------------------------------------------------------------------
@@ -946,7 +888,7 @@ def main():
         # Build historical context + Phase 2
         historical_context = build_historical_context()
         if historical_context:
-            log.info("Built historical context from Supabase (%d chars)", len(historical_context))
+            log.info("Built historical context (%d chars)", len(historical_context))
 
         log.info("Phase 2 — Generating consolidated newsletter from %d meetings…", len(meeting_extracts))
         newsletter_prompt = build_newsletter_prompt(
@@ -980,7 +922,6 @@ def main():
     meeting_extracts: list[dict] = []
     all_votes: list[dict] = []
     all_spending: list[dict] = []
-    meeting_id_map: dict[str, str] = {}  # filename -> Supabase meeting UUID
     call_count = 0
 
     for transcript in transcripts:
@@ -1035,25 +976,6 @@ def main():
 
         # Cache the successful extraction
         _save_cached_extract(transcript["filename"], notes, votes, spending)
-
-        # Persist to Supabase
-        if db.is_enabled():
-            meeting_date = transcript["filename"][:10]
-            body_name = _extract_body_from_filename(transcript["filename"])
-            youtube_url = _extract_url_from_content(transcript["content"])
-            meeting_id = db.upsert_meeting(
-                meeting_date=meeting_date,
-                body=body_name,
-                source_filename=transcript["filename"],
-                source_type="transcript",
-                youtube_url=youtube_url,
-                extract_text=notes,
-            )
-            if meeting_id:
-                meeting_id_map[transcript["filename"]] = meeting_id
-                db.upsert_votes(meeting_id, votes)
-                db.upsert_spending(meeting_id, spending, fiscal_year=int(meeting_date[:4]))
-                db.sync_officials_from_votes(votes, body=body_name)
 
     # -----------------------------------------------------------------------
     # Phase 1b: Process minutes as standalone sources for meetings
@@ -1122,23 +1044,6 @@ def main():
         # Cache the successful extraction
         _save_cached_extract(minutes_doc["filename"], notes, votes, spending)
 
-        # Persist to Supabase
-        if db.is_enabled():
-            meeting_date = minutes_doc["filename"][:10]
-            body_name = _extract_body_from_filename(minutes_doc["filename"])
-            meeting_id = db.upsert_meeting(
-                meeting_date=meeting_date,
-                body=body_name,
-                source_filename=minutes_doc["filename"],
-                source_type="minutes",
-                extract_text=notes,
-            )
-            if meeting_id:
-                meeting_id_map[minutes_doc["filename"]] = meeting_id
-                db.upsert_votes(meeting_id, votes)
-                db.upsert_spending(meeting_id, spending, fiscal_year=int(meeting_date[:4]))
-                db.sync_officials_from_votes(votes, body=body_name)
-
     if not meeting_extracts:
         log.error("No meeting extracts produced. Cannot generate newsletter.")
         raise SystemExit(1)
@@ -1156,11 +1061,11 @@ def main():
     log.info("Collected %d spending item(s) across all meetings", len(all_spending))
 
     # -----------------------------------------------------------------------
-    # Build historical context from Supabase for Phase 2
+    # Build historical context for Phase 2
     # -----------------------------------------------------------------------
     historical_context = build_historical_context()
     if historical_context:
-        log.info("Built historical context from Supabase (%d chars)", len(historical_context))
+        log.info("Built historical context (%d chars)", len(historical_context))
 
     # -----------------------------------------------------------------------
     # Phase 2: Combine all extracts into one consolidated weekly newsletter.

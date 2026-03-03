@@ -28,6 +28,11 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
       - name: Set up Cloudflare WARP (avoid YouTube IP blocks)
         run: |
           curl -fsSL https://pkg.cloudflareclient.com/pubkey.gpg | sudo gpg --yes --dearmor -o /usr/share/keyrings/cloudflare-warp-archive-keyring.gpg
@@ -43,30 +48,27 @@ jobs:
       - name: Install Python dependencies
         run: pip install -r requirements.txt
 
+      - name: Install Node.js dependencies
+        run: npm ci
+
       - name: Install Playwright browsers
         run: playwright install chromium --with-deps
 
       - name: Run data ingestion
         env:
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
         run: python scripts/ingest_data.py
 
       - name: Run analysis
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
         run: python scripts/analyze_meeting.py
 
-      - name: Publish to Ghost
+      - name: Publish to Substack
         env:
-          GHOST_API_URL: ${{ secrets.GHOST_API_URL }}
-          GHOST_ADMIN_KEY: ${{ secrets.GHOST_ADMIN_KEY }}
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
-        run: python scripts/publish_to_ghost.py --no-image
+          SUBSTACK_TOKEN: ${{ secrets.SUBSTACK_TOKEN }}
+          SUBSTACK_PUBLICATION_URL: ${{ secrets.SUBSTACK_PUBLICATION_URL }}
+        run: npx tsx scripts/publish_to_substack.ts
 
       - name: Commit and push drafts
         if: always()
