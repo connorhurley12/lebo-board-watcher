@@ -317,8 +317,11 @@ async function substackRequest<T>(
   const response = await fetch(url, {
     ...options,
     headers: {
-      Cookie: `substack.sid=${token}`,
+      Cookie: `connect.sid=${token}; substack.sid=${token}`,
       "Content-Type": "application/json",
+      "User-Agent":
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+      Accept: "application/json",
       ...((options.headers as Record<string, string>) ?? {}),
     },
   });
@@ -333,22 +336,31 @@ async function substackRequest<T>(
   return response.json() as Promise<T>;
 }
 
-interface SubstackUser {
+interface SubstackByline {
   id: number;
   name: string;
-  email: string;
+}
+
+interface SubstackDraftListItem {
+  publishedBylines: SubstackByline[];
 }
 
 async function getUserId(
   publicationUrl: string,
   token: string
 ): Promise<number> {
-  const user = await substackRequest<SubstackUser>(
-    "https://substack.com",
-    "/api/v1/reader/me",
+  // Get user ID from existing drafts on the publication
+  const drafts = await substackRequest<SubstackDraftListItem[]>(
+    publicationUrl,
+    "/api/v1/drafts",
     token
   );
-  return user.id;
+  if (drafts.length > 0 && drafts[0].publishedBylines?.length > 0) {
+    return drafts[0].publishedBylines[0].id;
+  }
+  throw new Error(
+    "Could not determine user ID. Make sure you have at least one draft on your Substack."
+  );
 }
 
 interface SubstackDraft {
