@@ -235,7 +235,9 @@ Separate each Deep Dive story with a horizontal rule (---).
 
 **What does NOT belong here:** Routine contract renewals (even large ones) unless there was \
 genuine controversy. Unanimous consent-agenda approvals. Appointments with no opposition. \
-If the only story is "they approved it," that goes in Also This Week.)
+Equipment purchases approved unanimously under budget with no debate. \
+If the only story is "they approved it," that goes in Also This Week. \
+**Test: Would a resident argue about this at a dinner party? If not, it's Also This Week.**)
 
 # The Smoke Detector
 
@@ -254,9 +256,12 @@ or "we'll look into it" with no timeline.
 Format each as: "**[Pattern Name]:** [One sentence, max 30 words, with the key fact.]"
 
 If none of these patterns appear this week, omit this section entirely — do not explain \
-that nothing was found. Just skip it.
+that nothing was found. Just skip it. **NEVER write "[Pattern Name]: None this week" — \
+if a pattern has no match, silently omit it.**
 
-**No item here may overlap with a Deep Dive story.**)
+**No item here may overlap with a Deep Dive story. Additionally, if a Smoke Detector \
+item references the same organization AND the same dollar figures as a Deep Dive story, \
+it is a duplicate — delete it and find a different item or omit the section.**)
 
 # Also This Week
 
@@ -281,8 +286,12 @@ already covered in the Deep Dive or Smoke Detector.)
 - Zoning appeals where residents can testify
 
 **EXCLUDE:**
-- Generic "Regular Meeting" dates (unless a specific controversial topic is on the agenda)
+- Generic "Regular Meeting" or "Next Commission Meeting" dates (unless a specific \
+controversial topic is on the agenda)
 - Awards banquets, graduation ceremonies, celebratory events
+- Registration deadlines for optional programs (e.g., Citizens Police Academy, \
+volunteer sign-ups, library workshops)
+- Conferences, institutes, or professional development events for board members/staff
 - Staff development days (unless a school/library CLOSES — frame as a closure)
 - Any date that has already passed. **CRITICAL: Check every date against today's publish \
 date (provided below). Dates BEFORE today must be excluded.**
@@ -296,9 +305,13 @@ If no high-stakes future dates were mentioned, omit this section entirely.)
 2. Does any Smoke Detector item duplicate a Deep Dive topic? If yes, replace it.
 3. Is the School Board represented if they met this week?
 4. Is the Deep Dive count between 3-5?
-5. Does the TL;DR paragraph accurately preview the Deep Dives below?
+5. Does the TL;DR paragraph accurately preview the Deep Dives below? \
+**Every topic mentioned in the TL;DR must have a corresponding Deep Dive story. \
+If you mention a topic in the TL;DR that only appears in the Smoke Detector or \
+Also This Week, either promote it to a Deep Dive or remove it from the TL;DR.**
 6. Does each Deep Dive story include at least one embedded quote (where the source material has one)?
 7. Are related topics from the same meeting consolidated into one story?
+8. Would every Deep Dive topic pass the "dinner party argument" test? If not, demote it.
 """
 
 
