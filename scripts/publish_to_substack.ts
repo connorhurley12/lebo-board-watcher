@@ -311,7 +311,10 @@ async function substackRequest<T>(
   token: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const baseUrl = publicationUrl.replace(/\/$/, "");
+  let baseUrl = publicationUrl.replace(/\/$/, "");
+  if (!/^https?:\/\//i.test(baseUrl)) {
+    baseUrl = `https://${baseUrl}`;
+  }
   const url = `${baseUrl}${path}`;
 
   const response = await fetch(url, {
