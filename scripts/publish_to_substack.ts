@@ -400,6 +400,23 @@ async function createDraft(
   );
 }
 
+async function publishDraft(
+  publicationUrl: string,
+  token: string,
+  draftId: number,
+  sendEmail: boolean = true
+): Promise<void> {
+  await substackRequest<unknown>(
+    publicationUrl,
+    `/api/v1/drafts/${draftId}/publish`,
+    token,
+    {
+      method: "POST",
+      body: JSON.stringify({ send: sendEmail }),
+    }
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Draft file discovery
 // ---------------------------------------------------------------------------
@@ -448,6 +465,8 @@ async function main() {
   const fileIdx = args.indexOf("--file");
   const filePath = fileIdx !== -1 ? args[fileIdx + 1] : undefined;
   const dryRun = args.includes("--dry-run");
+  const publish = args.includes("--publish");
+  const noEmail = args.includes("--no-email");
   const helpFlag = args.includes("--help") || args.includes("-h");
 
   if (helpFlag) {
@@ -458,6 +477,8 @@ Usage: npx tsx scripts/publish_to_substack.ts [options]
 Options:
   --file <path>   Path to a markdown draft (default: most recent in data/drafts/)
   --dry-run       Parse and convert the draft without calling Substack API
+  --publish       Publish the draft immediately (default: create draft only)
+  --no-email      When used with --publish, publish without sending email to subscribers
   --help, -h      Show this help message`);
     process.exit(0);
   }
@@ -536,7 +557,21 @@ Options:
     console.log(`  ID:     ${draft.id}`);
     console.log(`  Edit:   ${draftUrl}`);
     console.log("=".repeat(60));
-    console.log("\nOpen the link above to review before publishing.");
+
+    if (publish) {
+      const sendEmail = !noEmail;
+      console.log(
+        `\nPublishing draft${sendEmail ? " and sending to subscribers" : " (no email)"}...`
+      );
+      await publishDraft(publicationUrl, token, draft.id, sendEmail);
+      const postUrl = `${publicationUrl.replace(/\/$/, "")}/p/${draft.slug || draft.id}`;
+      console.log("\n" + "=".repeat(60));
+      console.log("Published!");
+      console.log(`  Post:   ${postUrl}`);
+      console.log("=".repeat(60));
+    } else {
+      console.log("\nOpen the link above to review before publishing.");
+    }
   } catch (err) {
     console.error("Failed to create draft:", err);
     process.exit(1);

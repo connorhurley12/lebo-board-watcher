@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "publish": "tsx scripts/publish_to_substack.ts"
+    "publish": "tsx scripts/publish_to_substack.ts",
+    "publish:live": "tsx scripts/publish_to_substack.ts --publish"
   },
   "dependencies": {
     "dotenv": "^16.4.7",
