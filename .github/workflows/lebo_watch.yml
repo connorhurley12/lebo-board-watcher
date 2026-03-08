@@ -68,7 +68,7 @@ jobs:
         env:
           SUBSTACK_TOKEN: ${{ secrets.SUBSTACK_TOKEN }}
           SUBSTACK_PUBLICATION_URL: ${{ secrets.SUBSTACK_PUBLICATION_URL }}
-        run: npx tsx scripts/publish_to_substack.ts
+        run: npx tsx scripts/publish_to_substack.ts --publish
 
       - name: Commit and push drafts
         if: always()
