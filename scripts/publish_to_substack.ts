@@ -8,7 +8,7 @@
  */
 
 import "dotenv/config";
-import { readdirSync, readFileSync, statSync } from "fs";
+import { readdirSync, readFileSync } from "fs";
 import { join, resolve } from "path";
 import { Lexer, type Token, type Tokens } from "marked";
 
@@ -430,15 +430,12 @@ function findLatestDraft(overridePath?: string): string {
     return content;
   }
 
-  let files: { path: string; mtime: number }[];
+  let files: { path: string; name: string }[];
   try {
     files = readdirSync(DRAFTS_DIR)
       .filter((f) => f.endsWith(".md"))
-      .map((f) => {
-        const full = join(DRAFTS_DIR, f);
-        return { path: full, mtime: statSync(full).mtimeMs };
-      })
-      .sort((a, b) => b.mtime - a.mtime);
+      .map((f) => ({ path: join(DRAFTS_DIR, f), name: f }))
+      .sort((a, b) => b.name.localeCompare(a.name));
   } catch {
     throw new Error(
       `No drafts directory found at ${DRAFTS_DIR}. Run scripts/analyze_meeting.py first.`
